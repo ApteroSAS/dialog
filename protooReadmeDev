@@ -1,0 +1,4 @@
+copy the protoo repo in this on (ignored in git ignore)
+add in package json "protoo-server": "file:./protoo/server",
+for client
+npm i ..\webRTCServer\mediasoup\protoo\client

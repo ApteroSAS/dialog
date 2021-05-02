@@ -434,56 +434,54 @@ async function runHttpsServer()
 /**
  * Create a protoo WebSocketServer to allow WebSocket connections from browsers.
  */
-async function runProtooWebSocketServer()
-{
-	logger.info('running protoo WebSocketServer...');
+async function runProtooWebSocketServer() {
+	logger.info("running protoo WebSocketServer...");
 
 	// Create the protoo WebSocket server.
-	protooWebSocketServer = new protoo.WebSocketServer(httpsServer,
-		{
-			maxReceivedFrameSize     : 960000, // 960 KBytes.
-			maxReceivedMessageSize   : 960000,
-			fragmentOutgoingMessages : true,
-			fragmentationThreshold   : 960000
+	if(process.env.TRANSPORT === "WebSocketServer"){
+		protooWebSocketServer = new protoo.WebSocketServer(httpsServer,
+			{
+				maxReceivedFrameSize     : 960000, // 960 KBytes.
+				maxReceivedMessageSize   : 960000,
+				fragmentOutgoingMessages : true,
+				fragmentationThreshold   : 960000
+			});
+	}else {
+		protooWebSocketServer = new protoo.WebSocketIOServer(httpsServer, {
+			cors: {
+				origin: process.env.ORIGINE || "*",
+				methods: ["GET", "POST"]
+			}
 		});
+	}
 
 	// Handle connections from clients.
-	protooWebSocketServer.on('connectionrequest', (info, accept, reject) =>
-	{
+	protooWebSocketServer.on("connectionrequest", (info, accept, reject) => {
 		// The client indicates the roomId and peerId in the URL query.
-		const u = url.parse(info.request.url, true);
-		const roomId = u.query['roomId'];
-		const peerId = u.query['peerId'];
+		const roomId = info.query["roomId"];
+		const peerId = info.query["peerId"];
 
-		if (!roomId || !peerId)
-		{
-			reject(400, 'Connection request without roomId and/or peerId');
-
+		if (!roomId || !peerId) {
+			reject(400, "Connection request without roomId and/or peerId");
 			return;
 		}
 
-		logger.info(
-			'protoo connection request [roomId:%s, peerId:%s, address:%s, origin:%s]',
-			roomId, peerId, info.socket.remoteAddress, info.origin);
+		logger.info("protoo connection request [roomId:%s, peerId:%s]", roomId, peerId);
 
 		// Serialize this code into the queue to avoid that two peers connecting at
 		// the same time with the same roomId create two separate rooms with same
 		// roomId.
-		queue.push(async () =>
-		{
+		queue.push(async () => {
 			const room = await getOrCreateRoom({ roomId });
 
 			// Accept the protoo WebSocket connection.
 			const protooWebSocketTransport = accept();
 
 			room.handleProtooConnection({ peerId, protooWebSocketTransport });
-		})
-			.catch((error) =>
-			{
-				logger.error('room creation or room joining failed:%o', error);
-
-				reject(error);
-			});
+		}).catch((error) => {
+			logger.error("room creation or room joining failed:%o", error);
+			reject(error);
+		});
 	});
 }
 

@@ -1,0 +1,1 @@
+docker run -it --mount src="%cd%",target=/workspace/,type=bind --name media-soup-dev-env node:14.15.5
