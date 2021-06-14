@@ -57,10 +57,12 @@ class WebSocketIOServer extends EnhancedEventEmitter {
     let replied = false;
 
     try {
-      console.log("query :",socket.handshake.query);
+      /*console.log("query :",socket.handshake.query);
+      console.log("socket :",socket);*/
       // Emit 'connectionrequest' event.
       this.emit("connectionrequest",
         {
+          request:{url:"https://"+socket.handshake.headers.host+socket.handshake.url},
           query: socket.handshake.query,
           socket: socket
         },

@@ -121,50 +121,51 @@ class Peer extends EnhancedEventEmitter
 		const request = Message.createRequest(method, data);
 
 		this._logger.debug('request() [method:%s, id:%s]', method, request.id);
-
-		// This may throw.
-		await this._transport.send(request);
-
-		return new Promise((pResolve, pReject) =>
+		const ret = new Promise((pResolve, pReject) =>
 		{
 			const timeout = 2000 * (15 + (0.1 * this._sents.size));
 			const sent =
-			{
-				id      : request.id,
-				method  : request.method,
-				resolve : (data2) =>
 				{
-					if (!this._sents.delete(request.id))
-						return;
+					id      : request.id,
+					method  : request.method,
+					resolve : (data2) =>
+					{
+						if (!this._sents.delete(request.id))
+							return;
 
-					clearTimeout(sent.timer);
-					pResolve(data2);
-				},
-				reject : (error) =>
-				{
-					if (!this._sents.delete(request.id))
-						return;
+						clearTimeout(sent.timer);
+						pResolve(data2);
+					},
+					reject : (error) =>
+					{
+						if (!this._sents.delete(request.id))
+							return;
 
-					clearTimeout(sent.timer);
-					pReject(error);
-				},
-				timer : setTimeout(() =>
-				{
-					if (!this._sents.delete(request.id))
-						return;
+						clearTimeout(sent.timer);
+						pReject(error);
+					},
+					timer : setTimeout(() =>
+					{
+						if (!this._sents.delete(request.id))
+							return;
 
-					pReject(new Error('request timeout'));
-				}, timeout),
-				close : () =>
-				{
-					clearTimeout(sent.timer);
-					pReject(new Error('peer closed'));
-				}
-			};
+						pReject(new Error('request timeout'));
+					}, timeout),
+					close : () =>
+					{
+						clearTimeout(sent.timer);
+						pReject(new Error('peer closed'));
+					}
+				};
 
 			// Add sent stuff to the map.
 			this._sents.set(request.id, sent);
 		});
+
+		// This may throw.
+		await this._transport.send(request);
+
+		return ret;
 	}
 
 	/**
